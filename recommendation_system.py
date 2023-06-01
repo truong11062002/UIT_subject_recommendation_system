@@ -85,27 +85,45 @@ def app():
         
         if options_rec == 'Recommend available information':
             r_subject = st.sidebar.text_input('Enter subject you want to recommend', placeholder='For example: NT101, ...')
-            st.write('You have chosen: ', r_subject)
+            # st.write('You have chosen: ', r_subject)
+            
             if st.sidebar.button('Recommend'):
+                st.write('You have chosen:')
+                try:
+                    st.write(r_subject + ': ' + dataset.loc[dataset['mamh'] == r_subject, 'tenmh'].reset_index(drop=True)[0])
+                except:
+                    st.write('Subject not found in our program')
                 if r_subject in dataset_original["mamh"].unique():
+                    st.text('---------------------------------------')
                     st.write('Recommendation for you:')
+                    st.text('---------------------------------------')
                     try:
+                        
                         result_pred = get_items_prediction(
-                            dataset=st.session_state['current_data'],
+                            dataset=dataset,
                             attn_matrix=attention_matrix, 
                             name_mh=r_subject,
                             mssv_query=mssv,
                             head_of_related_mh=20,
                             threshold_get_mssv=0.9
                         )
+                        # Create a dataframe contains tenmh and mamh
+                        df_tenmh_mamh = dataset[['tenmh', 'mamh']].copy().drop_duplicates().reset_index(drop=True)
+                        
+                        # Loop through result_pred to get tenmh
+                        for i in range(len(result_pred)):
+                            st.write(result_pred[i] + ': ' + df_tenmh_mamh.loc[df_tenmh_mamh['mamh'] == result_pred[i], 'tenmh'].reset_index(drop=True)[0])
                     except:
                         st.write('You have not learned this subject yet')
                         result_pred = []
                     if len(result_pred) == 0:
                         st.write('No recommendation for you')
-                    st.write(result_pred)
-                else:
-                    st.write('Subject not found in our program')
+                    
+                    
+                    # st.write(df_tenmh_mamh)
+                    # st.write(result_pred)
+                # else:
+                #     st.write('Subject not found in our program')
                     
         # -------------***********-------------            
         if options_rec == 'Add information into system to recommend':
@@ -160,10 +178,18 @@ def app():
             if st.session_state['add_data'] == True:
                 
                 r_subject = st.sidebar.text_input('Enter subject you want to recommend', placeholder='For example: NT101, ...')
-                st.write('You have chosen: ', r_subject)
+                # st.write('You have chosen: ', r_subject)
                 if st.sidebar.button('Recommend'):
+                    st.write('You have chosen:')
+                    try:
+                        st.write(r_subject + ': ' + dataset.loc[dataset['mamh'] == r_subject, 'tenmh'].reset_index(drop=True)[0])
+                    except:
+                        st.write('Subject not found in our program')
+                    
                     if r_subject in dataset_original["mamh"].unique():
+                        st.text('---------------------------------------')
                         st.write('Recommendation for you:')
+                        st.text('---------------------------------------')
                         try:
                             result_pred = get_items_prediction(
                                 dataset=st.session_state['current_data'],
@@ -173,14 +199,22 @@ def app():
                                 head_of_related_mh=20,
                                 threshold_get_mssv=0.9
                             )
+                            # Create a dataframe contains tenmh and mamh
+                            df_tenmh_mamh = dataset[['tenmh', 'mamh']].copy().drop_duplicates().reset_index(drop=True)
+                            
+                            # Loop through result_pred to get tenmh
+                            for i in range(len(result_pred)):
+                                st.write(result_pred[i] + ': ' + df_tenmh_mamh.loc[df_tenmh_mamh['mamh'] == result_pred[i], 'tenmh'].reset_index(drop=True)[0])
                         except:
                             st.write('You have not learned this subject yet')
                             result_pred = []
                         if len(result_pred) == 0:
                             st.write('No recommendation for you')
-                        st.write(result_pred)
-                    else:
-                        st.write('Subject not found in our program')
+                        # st.write(result_pred)
+                        
+                    # else:
+                    #     st.write('Subject not found in our program')
+                        
         
 # -------------***********-------------
 # Run the Streamlit app
