@@ -114,9 +114,10 @@ def app():
                         for i in range(len(result_pred)):
                             st.write(result_pred[i] + ': ' + df_tenmh_mamh.loc[df_tenmh_mamh['mamh'] == result_pred[i], 'tenmh'].reset_index(drop=True)[0])
                     except:
-                        st.write('You have not learned this subject yet')
+                        
                         result_pred = []
                     if len(result_pred) == 0:
+                        st.write('You have not learned this subject yet')
                         st.write('No recommendation for you')
                     
                     
@@ -206,9 +207,9 @@ def app():
                             for i in range(len(result_pred)):
                                 st.write(result_pred[i] + ': ' + df_tenmh_mamh.loc[df_tenmh_mamh['mamh'] == result_pred[i], 'tenmh'].reset_index(drop=True)[0])
                         except:
-                            st.write('You have not learned this subject yet')
                             result_pred = []
                         if len(result_pred) == 0:
+                            st.write('You have not learned this subject yet')
                             st.write('No recommendation for you')
                         # st.write(result_pred)
                         
