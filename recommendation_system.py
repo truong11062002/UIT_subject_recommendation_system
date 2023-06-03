@@ -1,10 +1,14 @@
 import streamlit as st
 import pandas as pd
 from src.utils.add_condition import add_condition_description
-from src.utils.get_items_prediction import get_items_prediction
 from src.utils.input_prediction import input_prediction
+from src.utils.get_items_prediction import get_items_prediction
 
 def app():
+    # Load dataset
+    dataset_original = pd.read_csv('./src/data/data_norm_final.csv')
+    attention_matrix = pd.read_csv('./src/data/attention_matrix.csv')
+    
     
     if st.sidebar.button('Refresh state'):
         st.session_state['add_data'] = False
@@ -13,8 +17,7 @@ def app():
         st.session_state['add_data'] = False
         st.session_state['current_data'] = None
         
-    # Load dataset
-    dataset_original = pd.read_csv('./src/data/data_norm_final.csv')
+    
     # -------------***********-------------
     
     # This is the sidebar
@@ -43,24 +46,31 @@ def app():
         )     
     # Recommend based on the section chosen
     elif section == 'Recommendation System':
+        
+        
+        
+        # dataset_original_usage = dataset_original.copy()
         dataset_original = dataset_original[[        \
             'mssv', 'gioitinh', 
             'CNPM', 'HTTT', 'KHMT', 'KTMT', 'KTTT', 'MMT&TT',   \
             'CLC', 'CNTN', 'CQUI', 'CTTT', 'KSTN',  \
-            'mamh', 'tenmh', 'mota',    \
+            'mamh', 'tenmh' ,'mota',    \
             'nganh_BB', 'nganh_BMAV', 'nganh_CNPM', 'nganh_HTTT', 'nganh_KHMT', 'nganh_KTMT', 'nganh_KTTT', 'nganh_MMT&TT',     \
             'diem_hp',      \
             'trangthai',        \
         ]]
+        dataset_original = add_condition_description(dataset_original)
+        dataset_original = dataset_original.drop_duplicates(subset=['mssv', 'mamh'], keep='last', inplace=False)
         dataset = dataset_original.drop(dataset_original[(dataset_original['nganh_BB'] == 1) | (dataset_original['nganh_BMAV'] == 1)].index)
-        dataset = dataset.drop_duplicates(subset=['mssv', 'mamh'], keep='last', inplace=False)
-        dataset = add_condition_description(dataset)
-        # -------------***********-------------
+
+        
+        # dataset.to_csv('./src/data/dataset.csv', index=False)
+        
         # Create 3 datasets
-        scores = dataset[['mssv', 'mamh', 'diem_hp']].copy().drop_duplicates()
-        subjects = dataset[['mamh', 'tenmh', 'monhoc_encode', \
+        scores = dataset_original[['mssv', 'mamh', 'diem_hp']].copy().drop_duplicates()
+        subjects = dataset_original[['mamh', 'tenmh', 'monhoc_encode', \
                             'nganh_BB', 'nganh_BMAV', 'nganh_CNPM', 'nganh_HTTT', 'nganh_KHMT', 'nganh_KTMT', 'nganh_KTTT', 'nganh_MMT&TT']].copy().drop_duplicates()
-        students = dataset[['mssv', 'gioitinh', \
+        students = dataset_original[['mssv', 'gioitinh', \
                             'CNPM', 'HTTT', 'KHMT', 'KTMT', 'KTTT', 'MMT&TT', \
                             'CLC', 'CNTN', 'CQUI', 'CTTT', 'KSTN']].copy().drop_duplicates()
         
@@ -72,7 +82,7 @@ def app():
         # st.write(students.shape)
         # st.dataframe(dataset.tail())
         
-        attention_matrix = pd.read_csv('./src/data/attention_matrix.csv')
+        
         # -------------******TEST*****-------------
         # st.write(attention_matrix.shape)
         # st.dataframe(attention_matrix)
@@ -90,30 +100,35 @@ def app():
             if st.sidebar.button('Recommend'):
                 st.write('You have chosen:')
                 try:
-                    st.write(r_subject + ': ' + dataset.loc[dataset['mamh'] == r_subject, 'tenmh'].reset_index(drop=True)[0])
+                    st.write(r_subject + ': ' + dataset_original.loc[dataset_original['mamh'] == r_subject, 'tenmh'].reset_index(drop=True)[0])
                 except:
                     st.write('Subject not found in our program')
+                
                 if r_subject in dataset_original["mamh"].unique():
                     st.text('---------------------------------------')
                     st.write('Recommendation for you:')
                     st.text('---------------------------------------')
+                    
                     try:
-                        
+                        # breakpoint()
                         result_pred = get_items_prediction(
-                            dataset=dataset,
-                            attn_matrix=attention_matrix, 
-                            name_mh=r_subject,
-                            mssv_query=mssv,
-                            head_of_related_mh=20,
-                            threshold_get_mssv=0.9
+                                dataset_original_usage=dataset_original,
+                                attn_matrix=attention_matrix, 
+                                name_mh=r_subject,
+                                mssv_query=mssv,
+                                head_of_related_mh=20,
+                                threshold_get_mssv=0.1,
+                                threshold_get_list=0.5
                         )
-                        # Create a dataframe contains tenmh and mamh
-                        df_tenmh_mamh = dataset[['tenmh', 'mamh']].copy().drop_duplicates().reset_index(drop=True)
                         
-                        # Loop through result_pred to get tenmh
+                        # Create a dataframe contains tenmh and mamh
+                        df_tenmh_mamh = dataset_original[['tenmh', 'mamh']].copy().drop_duplicates().reset_index(drop=True)
+                        
+                        # Loop through result to get tenmh
                         for i in range(len(result_pred)):
                             st.write(result_pred[i] + ': ' + df_tenmh_mamh.loc[df_tenmh_mamh['mamh'] == result_pred[i], 'tenmh'].reset_index(drop=True)[0])
                     except:
+                        # st.write('hello')
                         
                         result_pred = []
                     if len(result_pred) == 0:
@@ -158,7 +173,7 @@ def app():
                 index = 0
                 for subject, score in zip(list_of_subject, input_scores):
                     st.sidebar.write(f'{subject}: {score}')
-                    dataset = dataset.append(input_prediction(
+                    dataset_original = dataset_original.append(input_prediction(
                         subjects=subjects,
                         _mssv = mssv,
                         _gioitinh = sex,
@@ -171,7 +186,7 @@ def app():
                     ), ignore_index=True)
                     index += 1
                 st.session_state['add_data'] = True
-                st.session_state['current_data'] = dataset.copy()
+                st.session_state['current_data'] = dataset_original.copy()
             
             # -------------***********-------------
             # st.write(st.session_state['add_data'])
@@ -183,7 +198,7 @@ def app():
                 if st.sidebar.button('Recommend'):
                     st.write('You have chosen:')
                     try:
-                        st.write(r_subject + ': ' + dataset.loc[dataset['mamh'] == r_subject, 'tenmh'].reset_index(drop=True)[0])
+                        st.write(r_subject + ': ' + dataset_original.loc[dataset_original['mamh'] == r_subject, 'tenmh'].reset_index(drop=True)[0])
                     except:
                         st.write('Subject not found in our program')
                     
@@ -193,15 +208,16 @@ def app():
                         st.text('---------------------------------------')
                         try:
                             result_pred = get_items_prediction(
-                                dataset=st.session_state['current_data'],
+                                dataset_original_usage=st.session_state['current_data'],
                                 attn_matrix=attention_matrix, 
                                 name_mh=r_subject,
                                 mssv_query=mssv,
                                 head_of_related_mh=20,
-                                threshold_get_mssv=0.9
+                                threshold_get_mssv=0.1,
+                                threshold_get_list=0.5
                             )
                             # Create a dataframe contains tenmh and mamh
-                            df_tenmh_mamh = dataset[['tenmh', 'mamh']].copy().drop_duplicates().reset_index(drop=True)
+                            df_tenmh_mamh = dataset_original[['tenmh', 'mamh']].copy().drop_duplicates().reset_index(drop=True)
                             
                             # Loop through result_pred to get tenmh
                             for i in range(len(result_pred)):

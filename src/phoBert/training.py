@@ -1,15 +1,49 @@
 import torch
 from torch.nn.functional import cosine_similarity
 from transformers import AutoModel, AutoTokenizer
+import pandas as pd
+import numpy as np
+
+
+def add_condition_description(dataset):
+    # Additional conditions for better similarity among clusters involving subjects 
+    conditions = {
+        'nganh_BB': 'Môn học bắt buộc',
+        'nganh_BMAV': 'Môn học ngoại ngữ',
+        'nganh_CNPM': 'Môn học thuộc khoa Công Nghệ Phần Mềm',
+        'nganh_HTTT': 'Môn học thuộc khoa Hệ Thống Thông Tin',
+        'nganh_KHMT': 'Môn học thuộc khoa Khoa Học Máy Tính',
+        'nganh_KTMT': 'Môn học thuộc khoa Kĩ Thuật Máy Tính',
+        'nganh_KTTT': 'Môn học thuộc khoa Kĩ Thuật Thông Tin',
+        'nganh_MMT&TT': 'Môn học thuộc khoa Mạng Máy Tính và Truyền Thông'
+    }
+    for condition, value in conditions.items():
+        mask = dataset[condition] == 1
+        dataset.loc[mask, 'monhoc_encode'] = dataset['tenmh'].astype(str) + ': ' + dataset['mota'].astype(str) + ' ' + value
+    return dataset
+
+# Load dataset
+dataset_original = pd.read_csv('./data/data_norm_final.csv')
+# dataset_original_usage = dataset_original.copy()
+dataset_original = dataset_original[[        \
+    'mssv', 'gioitinh', 
+    'CNPM', 'HTTT', 'KHMT', 'KTMT', 'KTTT', 'MMT&TT',   \
+    'CLC', 'CNTN', 'CQUI', 'CTTT', 'KSTN',  \
+    'mamh', 'tenmh' ,'mota',    \
+    'nganh_BB', 'nganh_BMAV', 'nganh_CNPM', 'nganh_HTTT', 'nganh_KHMT', 'nganh_KTMT', 'nganh_KTTT', 'nganh_MMT&TT',     \
+    'diem_hp',      \
+    'trangthai',        \
+]]
+dataset_original = add_condition_description(dataset_original)
+dataset_original = dataset_original.drop_duplicates(subset=['mssv', 'mamh'], keep='last', inplace=False)
+dataset = dataset_original.drop(dataset_original[(dataset_original['nganh_BB'] == 1) | (dataset_original['nganh_BMAV'] == 1)].index)
 
 # Loading pretrained Phobert models 
 phobert = AutoModel.from_pretrained("vinai/phobert-base-v2")
 tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base-v2")
+print(f'Step 1 (TOKENIZE): Training to get Feature Vector')
 
-# dictionary subjects representation with format {'mamh': 'monhoc_encode'}
 monhoc = dict(zip(dataset['mamh'], dataset['monhoc_encode']))
-print(len(monhoc))
-
 lst_keys = list(monhoc.keys())
 monhoc['PH001'] = 'Nhập môn điện tử: Đây là môn học ở giai đoan kiến thức đai cương. Môn học này trình bày các khái niệm và ̣phương pháp cơ bản về điện tử. Giới thiệu về nguyên lý hoạt động của của các linh kiện điện tử cơ bản (điện trở, tụ điện, nguồn điện, transistor,….). Ứng dụng các linh kiện điện tử này vào các mạch điện thực tế. Môn học thuộc khoa Kĩ Thuật Máy Tính'
 # monhoc[lst_keys[19]] = 'Xác suất thống kê: Môn học này trình bày các khái niệm và phương pháp về: Lý thuyết xác suất (Không gian xác suất; Biến ngẫu nhiên; Hàm đặc trưng; Dãy các biến ngẫu nhiên; Các quy luật phân phối xác suất; Các định lý giới hạn phân phối xác suất) và Thống kê (Mẫu ngẫu nhiên; Ước lượng điểm và ước lượng khoảng; Kiểm định các giả thiết thống kê; Phân tích tương quan và hồi quy; Một số vấn đề về quá trình ngẫu nhiên). Ngoài ra, môn học này còn giới thiệu về cách thức nhận diện, phân tích và xử lý một vấn đề thực tế; xử lý các số liệu thống kê; để từ đó giúp cho người dùng đưa ra các suy luận phù hợp (nhằm hỗ trợ cho quá trình ra quyết định). Môn học bắt buộc'
@@ -25,14 +59,51 @@ monhoc['SE320'] = 'Lập trình đồ họa 3 chiều với Direct3D: Lập tri
 monhoc['NT534'] = 'An toàn mạng máy tính nâng cao: Cách phòng chống tấn công từ chối dịch vụ, các hoạt động ngầm trên Internet, bàn luận về các giải pháp kĩ thuật trong việc ngăn chặn cũng như đối phó với ngăn chặn trong việc quản lý truy cập trên Internet. Ngoài ra, môn này cũng đề cập các nguy cơ từ các loại mã độc tinh vi đối với an toàn mạng. Đối với hệ tài năng: Môn an toàn mạng đề cập các chủ đề căn bản của an toàn mạng. Môn này đề cập đến các vấn đề chuyên sâu hơn ví dụ như là làm thế nào để phòng chống tấn công từ chối dịch vụ, các hoạt động ngầm trên Internet, bàn luận về các giải pháp kĩ thuật trong việc ngăn chặn cũng như đối phó với ngăn chặn trong việc quản lý truy cập trên Internet. Ngoài ra, môn này cũng đề cập các nguy cơ từ các loại mã độc tinh vi đối với an toàn mạng. Cuối cùng, các kỹ thuật client side, server-side honeypot cũng được giới thiệu để nghiên cứu, thu thập mã độc. Môn học thuộc khoa Mạng Máy Tính và Truyền Thông'
 monhoc['IE307'] = 'Công nghệ lập trình đa nền tảng cho ứng dụng di động: Môn học trình bày nguyên lý cơ bản của các Framework về lập trình di động đa nền tảng (React Native, PhoneGap, Xamarin...) và đặc biệt là Xamarin Framework. Cung cấp các Controls cơ bản của Xamarin, và áp dụng để xây dựng ứng dụng đa nền tảng: Label, Entry, Button, Image, Switch, ListView, DatePicker, TimePicker. Bên cạnh đó, môn học còn cung cấp thêm các vấn đề nâng cao của Xamarin, để tiếp tục tự nghiên cứu sử dụng về sau của Camera, Notification, Google Map APIs, Grial, RESTful API, Syncfusion... Môn học trang bị kỹ năng làm việc nhóm theo môi trường doanh nghiệp, đọc hiểu yêu cầu của khách hàng về ứng dụng di động, Phân tích & Thiết kế các ứng dụng di động để xây dựng một ứng dụng di động đa nền tảng cơ bản chạy trên iOS, Android & Windows Phone theo yêu cầu. Môn học thuộc khoa Kĩ Thuật Thông Tin'
 lst_input_ids = [torch.tensor([tokenizer.encode(monhoc[key])]) for key in lst_keys]
-
-# Training model
 with torch.no_grad():
     features = {}
     for index, input_ids in enumerate(lst_input_ids):
         features[lst_keys[index]] = phobert(input_ids).pooler_output
 
-# similarity attention matrix of pair-wise subjects
+print(f'Step 2 (OPTIMIZE): Text processing for more supervision of Feature Vector')
+lst_supervision_extra_dic = {
+    'nganh_CNPM': 'Cung cấp sự hiểu biết các đặc trưng chính của phần mềm, khái niệm chu trình phần mềm, các hoạt động kỹ thuật, cung cấp kiến thức thực nghiệm về chọn lựa kỹ thuật, công cụ, mô hình chu trình dự án, các kiến thức độ quan trọng đảm bảo chất lượng (quality assurance), quản lý dự án trong phát triển phần mềm',
+    'nganh_HTTT': 'Nghiên cứu các hệ thống thông tin quản trị doanh nghiệp, ngân hàng như ERP, Supply Chain Management; Nghiên cứu các ứng dụng xây dựng hệ thống thông tin phục vụ Thương Mại Điện Tử; Phát triển các nghiên cứu nhằm tăng cường khai thác tri thức từ CSDL, quản trị các kho dữ liệu lớn, tìm kiếm thông tin trên web, tìm kiếm ngữ nghĩa, mạng xã hội; Phát triển các nghiên cứu liên ngành giữa tin học và các ngành khoa học khác như: xử lý ngôn ngữ tự nhiên, sinh học, hoá học, môi trường, ...',
+    'nganh_KHMT': 'Đào tạo bài bản về Trí tuệ nhân tạo (Artificial Intelligence - AI) đáp ứng nhu cầu về nghiên cứu, xây dựng và phát triển các sản phẩm, giải pháp thông minh phục vụ cho cuộc sống. Chương trình đào tạo của Khoa cung cấp cho sinh viên nhiều lựa chọn theo các định hướng nghề nghiệp như Trí tuệ Nhân tạo (AI), Thị giác Máy tính (Computer Vision), Xử lý Ngôn ngữ Tự nhiên (Natural Language Processing)…. Với các kiến thức nền tảng sinh viên hoàn toàn có thể tham gia nghiên cứu và phát triển các ứng dụng thông minh như: hệ thống nhận diện khuôn mặt (Face Recognition System), hệ thống Chatbot, hệ thống tìm kiếm – truy vấn thông tin (Retrieval System) ...',
+    'nganh_KTMT': 'Lập trình các phần mềm nhúng trên các thiết bị di động (Smartphone, Tablet, iphone, ipad, ...), các vi xử lý-vi điều khiển trong các hệ thống công nghiệp, xe ô tô, điện gia dụng, ngôi nhà thông minh,… (Chuyên ngành hệ thống nhúng và IoT); thiết kế mạch điện - điện tử, mạch điều khiển trong công nghiệp, vi mạch, chip,... (Chuyên ngành thiết kế vi mạch)',
+    'nganh_KTTT': 'Thiết kế, xây dựng và quản lý các dự án nghiên cứu và ứng dụng CNTT, chủ yếu trong lĩnh vực dữ liệu không gian-thời gian (địa lý, tài nguyên, môi trường, viễn thám. . .). Tập trung vào những ứng dụng về GIS trên thiết bị di động và trao đổi dữ liệu với máy chủ; Vận hành, quản lý, giám sát; phân tích và phát triển các ứng dụng CNTT tại các doanh nghiệp; Khai thác dữ liệu và thông tin ứng dụng cho các doanh nghiệp trong vấn đề phân tích định lượng; Xây dựng, phát triển các ứng dụng về lãnh vực truyền thông xã hội và công nghệ Web',
+    'nganh_MMT&TT': 'Quản trị mạng và hệ thống tại các ngân hàng, các trung tâm dữ liệu, các nhà cung cấp dịch vụ Internet (ISP); Thiết kế mạng chuyên nghiệp: xây dựng các mạng máy tính an toàn, hiệu quả cho các đơn vị có yêu cầu; Phát triển phần mềm mạng; Phát triển phần mềm mạng; Xây dựng và phát triển các ứng dụng truyền thông: VoIP, hội nghị truyền hình',
+}
+lst_supervision_keys = list(lst_supervision_extra_dic.keys())
+lst_supervision_token = [torch.tensor([tokenizer.encode(lst_supervision_extra_dic[key])]) for key in ['nganh_CNPM', 'nganh_HTTT', 'nganh_KHMT', 'nganh_KTMT', 'nganh_KTTT', 'nganh_MMT&TT']]
+with torch.no_grad():
+    features_supervision = {}
+    for index, input_ids in enumerate(lst_supervision_token):
+        features_supervision[lst_supervision_keys[index]] = phobert(input_ids).pooler_output
+
+data_temp = dataset_original[['mamh', 'nganh_BB', 'nganh_BMAV', 'nganh_CNPM', 'nganh_HTTT', 'nganh_KHMT', 'nganh_KTMT', 'nganh_KTTT', 'nganh_MMT&TT']]
+
+conditions = [
+    dataset_original['nganh_BB'] == 1,
+    dataset_original['nganh_BMAV'] == 1,
+    dataset_original['nganh_CNPM'] == 1,
+    dataset_original['nganh_HTTT'] == 1,
+    dataset_original['nganh_KHMT'] == 1,
+    dataset_original['nganh_KTMT'] == 1,
+    dataset_original['nganh_KTTT'] == 1,
+    dataset_original['nganh_MMT&TT'] == 1   
+]
+values = ['nganh_BB', 'nganh_BMAV', 'nganh_CNPM', 'nganh_HTTT', 'nganh_KHMT', 'nganh_KTMT', 'nganh_KTTT', 'nganh_MMT&TT']
+data_temp['nganh'] = np.select(conditions, values, default=0)
+
+data_temp = data_temp.drop_duplicates()
+
+for key in features.keys():
+    val = data_temp.loc[data_temp['mamh'] == key, 'nganh'].values[0]
+    if val in ['nganh_BB', 'nganh_BMAV']:
+        continue
+    else:
+        features[key] = torch.cat((features[key], features_supervision[val]), 1)
+
 data = [{
         'mh1': i, 
         'mh2': j, 
@@ -42,4 +113,5 @@ data = [{
     for j in features.keys()]
 attention_monhoc = pd.DataFrame(data)
 attention_matrix = attention_monhoc.pivot_table(index=["mh1"], columns=["mh2"], values="similarity")
-attention_matrix.to_csv('../data/attention_matrix.csv')
+print('done')
+attention_matrix.to_csv('./data/attention_matrix.csv')
